@@ -1,7 +1,7 @@
 
 (*<*)
 theory Untyped
-imports HOLCF Nominal2 Cenv "Nominal-HOLCF" begin
+imports HOLCF Cenv begin
 (*>*)
 
 section {* The Untyped Lambda Calculus: A First Example *}
@@ -11,12 +11,7 @@ text {* As a first non-trivial example, let's consider the untyped lambda calcul
 
 
 text {* First, we define the AST of the untyped lambda calculus as an ordinary Isabelle/HOL AST *}
-nominal_datatype lam = Lam x::"name" l::"lam" binds x in l | App lam lam | Var name
-
-(* Let's define substitution and beta reduction for all this. Since we're not 
-   using de bruijn indices it's going to be a little goofy *)
-
-
+datatype lam = Lam nat lam | App lam lam | Var nat
 
 text {* Note that we have the standard lambda abstractions,
    applications, and variables. This is a pure lambda calculus
@@ -69,11 +64,11 @@ fixrec dApply :: "D \<rightarrow> D \<rightarrow> D" where
 "dApply\<cdot>(DFun\<cdot>f)\<cdot>x = f\<cdot>x" |
 "dApply\<cdot>\<bottom>\<cdot>x = \<bottom>"
 
-abbreviation dapp :: " D \<Rightarrow> D \<Rightarrow> D" (infixl "\<diamond>" 900) where
-"f\<diamond>x \<equiv> dApply\<cdot>f\<cdot>x"
+abbreviation dapp :: " D \<Rightarrow> D \<Rightarrow> D" (infixl "\<bullet>" 900) where
+"f\<bullet>x \<equiv> dApply\<cdot>f\<cdot>x"
 
 text {* As a quick sanity check, let's just try proving @{text "f\<bullet>\<bottom> = \<bottom>"}. This should fail. *}
-lemma "f\<diamond>\<bottom> = \<bottom>"
+lemma "f\<bullet>\<bottom> = \<bottom>"
 apply (cases f)
 apply simp
 apply simp
@@ -91,19 +86,10 @@ text {* We can write a denotation function fairly simply now.
    with continuous operations @{term sfun_upd} and @{term slookup} that act on the environment.
 *}
 
-instantiation D :: pure_cpo
-begin
-  definition "p \<bullet> (d :: D) = d"
-instance
-  apply default
-  apply (auto simp add: permute_D_def)
-  done
-end
-
-nominal_primrec lamDenote :: "lam \<Rightarrow> D cenv \<Rightarrow> D" where
-"atom n \<sharp> \<sigma> \<Longrightarrow> lamDenote (Lam n l) \<sigma> = (\<Delta> x. (lamDenote l) (sfun_upd\<cdot>\<sigma>\<cdot>n\<cdot>x))" |
+primrec lamDenote :: "lam \<Rightarrow> D cenv \<Rightarrow> D" where
+"lamDenote (Lam n l) \<sigma> = (\<Delta> x. (lamDenote l) (sfun_upd\<cdot>\<sigma>\<cdot>n\<cdot>x))" |
 "lamDenote (Var n) \<sigma> = slookup n\<cdot>\<sigma>" |
-"lamDenote (App f a) \<sigma> = (lamDenote f \<sigma>)\<diamond>(lamDenote a \<sigma>)"
+"lamDenote (App f a) \<sigma> = (lamDenote f \<sigma>)\<bullet>(lamDenote a \<sigma>)"
 
 text {* Simple Church encodings of numbers and booleans, along with proofs that
    the encodings behave appropriately *}
