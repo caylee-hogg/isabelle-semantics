@@ -12,9 +12,9 @@ type_synonym scon = nat
 
 (* let's do debruijn indices for lambdas und lets *)
 
-datatype expr = EVar var | ELit lit | ELam pat expr
+datatype expr = EVar var | ELit lit | ELam pat expr | ERef nat
               | EData dcon | EApp expr expr | ECase expr "(pat \<times> expr) list"
-              | EReturn | EBind | EReadRef | EWriteRef
+              | EReturn | EBind expr expr | EReadRef | EWriteRef
               | EConst const | ELet decls expr | ELetrec decls expr
               | EUpdate expr "(var \<times> expr) list" | EStruct scon "(var \<times> expr) list" (* need to lookup how the structure declarations here work <_< cuz this doesn't seem right *)
 and lit = LBit "bool list" | LSigned int | LUnsigned nat | LLab lab

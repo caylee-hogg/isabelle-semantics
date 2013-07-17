@@ -65,12 +65,40 @@ by (simp add: natSet_def)
 definition pElem :: "('a :: bifinite) \<Rightarrow> ('a)\<natural> \<Rightarrow> bool" where
 "pElem x xs = (convex_plus\<cdot>{x}\<natural>\<cdot>xs = xs)"
 
+lemma "{y}\<natural> \<union>\<natural> \<bottom> \<sqsubseteq> \<bottom> \<Longrightarrow> y = \<bottom>" 
+
+
+
+lemma "{y}\<natural> \<union>\<natural> \<bottom> = \<bottom> \<Longrightarrow> y = \<bottom>"
+apply (subgoal_tac "{y}\<natural> \<union>\<natural> \<bottom> \<sqsubseteq> \<bottom>")
+apply simp
+
+lemma "pElem y {x}\<natural> \<Longrightarrow> y = x \<or> y = \<bottom>"
+apply (simp add: pElem_def)
+apply (subgoal_tac "{y, x}\<natural> \<sqsubseteq> {x}\<natural>")
+apply (subgoal_tac "{x}\<natural> \<sqsubseteq> {y, x}\<natural>")
+apply (case_tac "x=\<bottom>")
+apply simp
+apply (simp add: convex_pd_below_simps)
+
+apply 
+apply (simp add: convex_pd_below_simps)
+
+apply (case_tac "x=\<bottom>")
+apply simp
+apply (case_tac "y=\<bottom>")
+apply simp
+apply simp
+
 definition funSet :: "V set \<Rightarrow> V set \<Rightarrow> V set" where
 "funSet A B \<equiv> {VFun\<cdot>f | f. (\<forall> x. x \<in> A \<longrightarrow> (\<forall> y. pElem y (f\<cdot>x) \<longrightarrow> y \<in> B))}"
 
 lemma [simp]: "\<lbrakk> (\<forall> x. x \<in> A \<longrightarrow> (\<forall> y. pElem y (f\<cdot>x) \<longrightarrow> y \<in> B)) \<rbrakk> \<Longrightarrow> VFun\<cdot>f \<in> funSet A B"
 apply (simp add: funSet_def)
 done
+
+lemma [simp]: "\<bottom> \<in> funSet A B"
+apply (simp add: funSet_def pElem_def)
 
 fun tyM :: "ty \<Rightarrow> (V set)" where
 "tyM TyNat = natSet" |
@@ -92,4 +120,12 @@ fun lamM :: "lam \<Rightarrow> V cenv \<rightarrow> (V)\<natural>" where
 "lamM (LPlus l l') = (\<Lambda> \<sigma>. (\<Union>\<natural> x\<in>(lamM l\<cdot>\<sigma>). \<Union>\<natural> y\<in>(lamM l'\<cdot>\<sigma>). {vPlus\<cdot>x\<cdot>y}\<natural>))" |
 "lamM (LVar n) = (\<Lambda> \<sigma>. {slookup n\<cdot>\<sigma>}\<natural>)"
 
+definition env_compat :: "ty_env \<Rightarrow> V cenv \<Rightarrow> bool" where
+"env_compat tys \<sigma> \<equiv> \<forall> n. (slookup n\<cdot>\<sigma>) \<in> tyM (tys n)"
 
+theorem "\<lbrakk>lam_ty tys l t; env_compat tys \<sigma>\<rbrakk> \<Longrightarrow> \<forall> y. pElem y (lamM l\<cdot>\<sigma>) \<longrightarrow> y \<in> (tyM t)"
+apply (induct arbitrary: \<sigma> rule: lam_ty.induct)
+apply simp
+apply (rule allI)
+apply (simp add: env_compat_def)
+apply (simp add: pElem_def)

@@ -416,6 +416,7 @@ apply simp
 apply (force simp: funSet_def)
 apply (force simp: funSet_def)
 apply (force simp: funSet_def)
+apply simp
 apply (simp add: funSet_def env_compat_def)
 done
 (*>*)

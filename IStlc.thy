@@ -80,7 +80,7 @@ proof
     apply (simp add: V.take_take min_def, safe)
     apply (subst *, assumption)
     apply (rule ideal_downward [OF Rep_ideal'])
-    apply (rule monofun_cfun_fun)
+    apply (rule monofun_cfun_fun) thm V.chain_take
     apply (erule chain_mono [OF V.chain_take])
     apply assumption
     apply (subst * [symmetric])

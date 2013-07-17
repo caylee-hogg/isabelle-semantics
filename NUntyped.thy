@@ -38,6 +38,9 @@ fun subst :: "nat \<Rightarrow> lam \<Rightarrow> lam \<Rightarrow> lam" where
 "subst j s (Lam l) = Lam (subst (Suc j) (shift 1 0 s) l)" |
 "subst j s (App l l') = (App (subst j s l) (subst j s l'))"
 
+definition topsubst :: "nat \<Rightarrow> lam \<Rightarrow> lam \<Rightarrow> lam" where
+"topsubst n l l' = shiftD 1 0 (subst n (shift 1 0 l') l)"
+
 definition beta :: "lam \<Rightarrow> lam \<Rightarrow> lam" where
 "beta l l' = shiftD 1 0 (subst 0 (shift 1 0 l') l)"
 
@@ -90,32 +93,87 @@ apply simp
 apply simp
 done
 
-definition chead :: "D list \<rightarrow> D" where
-"chead = (\<Lambda> x. case x of [] \<Rightarrow> \<bottom> | y # ys \<Rightarrow> y)"
+fixrec chead :: "D list \<rightarrow> D" where
+"chead\<cdot>[] = \<bottom>" |
+"chead\<cdot>(y # ys) = y"
 
 definition ctail :: "D list \<rightarrow> D list" where
 "ctail = (\<Lambda> x. case x of [] \<Rightarrow> [] | y # ys \<Rightarrow> ys)"
 
+lemma [simp] : "ctail\<cdot>[] = []"
+               "ctail\<cdot>(x # xs) = xs"
+apply (simp add: ctail_def)
+apply (simp add: ctail_def)
+done
+
+definition match_0 :: "nat \<rightarrow> 'a match \<rightarrow> 'a match" where
+"match_0 = (\<Lambda> n k. case n of 0 \<Rightarrow> k | (Suc n') \<Rightarrow> Fixrec.fail)"
+
+definition match_Suc :: "nat \<rightarrow> (nat \<rightarrow> 'a match) \<rightarrow> 'a match" where
+"match_Suc = (\<Lambda> n k. case n of 0 \<Rightarrow> Fixrec.fail | (Suc n') \<Rightarrow> k\<cdot>n')"
+
+lemma match_0_simps [simp]: 
+  "match_0\<cdot>0\<cdot>k = k" 
+  "match_0\<cdot>(Suc n)\<cdot>k = Fixrec.fail"
+unfolding match_0_def by simp_all
+
+lemma match_Suc_simps [simp]:
+  "match_Suc\<cdot>0\<cdot>k = Fixrec.fail"
+  "match_Suc\<cdot>(Suc n)\<cdot>k = k\<cdot>n"
+unfolding match_Suc_def by simp_all
+term "0 :: nat"
+
+ML {* @{const_name Groups.zero_class.zero} *}
+
+setup {* 
+  Fixrec.add_matchers
+  [ (@{const_name Groups.zero_class.zero}, @{const_name match_0}),
+    (@{const_name Suc}, @{const_name match_Suc})] *}
+
 fun cnth :: "nat \<Rightarrow> D list \<rightarrow> D" where
 "cnth 0 = chead" |
 "cnth (Suc n) = (cnth n oo ctail)"(*>*)
+
+lemma "cont cnth"
+by simp
 
 text {* We now come to our denotation function, which we define by ordinary
         structural recursion of the lambda terms. At this point, we are able
         to simply define the meaning of lambda abstractions as lambda abstractions within the model, applications as applications within the model, and
         variables as lookup within the environment. The definition of the cnth function we have elided as it is simply a continuous operation on lists. Here, we are able to use the fact that an instance has been defined for the built in list datatype that makes lists of a cpo a cpo, so we are able to define continuous operations on lists and keep everything nice and computable in our semantics.*}
 
-fun lamDenote :: "lam \<Rightarrow> D list \<rightarrow> D" where
-"lamDenote (Lam l) = (\<Lambda> \<sigma>. (\<Delta> x. (lamDenote l)\<cdot>(x # \<sigma>)))" |
-"lamDenote (Var n) = (\<Lambda> \<sigma>. cnth n\<cdot>\<sigma>)" |
-"lamDenote (App l1 l2) = (\<Lambda> \<sigma>. (lamDenote l1\<cdot>\<sigma>)\<bullet>(lamDenote l2\<cdot>\<sigma>))"
+fun lamDenote :: "lam \<Rightarrow> D list \<rightarrow> D" ("\<parallel>_\<parallel>") where
+"\<parallel>Lam l\<parallel> = (\<Lambda> \<sigma>. (\<Delta> x. \<parallel>l\<parallel>\<cdot>(x # \<sigma>)))" |
+"\<parallel>Var n\<parallel> = (\<Lambda> \<sigma>. cnth n\<cdot>\<sigma>)" |
+"\<parallel>App l1 l2\<parallel> = (\<Lambda> \<sigma>. \<parallel>l1\<parallel>\<cdot>\<sigma>\<bullet>\<parallel>l2\<parallel>\<cdot>\<sigma>)"
+term length term append
 
-lemma 
+lemma "\<lbrakk>length xs = n\<rbrakk> \<Longrightarrow> \<parallel>shift (Suc 0) n f\<parallel>\<cdot>(xs @ (y # ys)) = \<parallel>f\<parallel>\<cdot>(xs @ ys)"
+apply (induct f arbitrary: xs y ys n)
+defer
+apply simp
+apply (case_tac "nat=n")
+defer
+apply simp
+apply simp
+
+lemma "\<parallel>shift (Suc 0) 0 f\<parallel>\<cdot>(x # \<sigma>) = \<parallel>f\<parallel>\<cdot>\<sigma>"
+apply (induct f arbitrary: x \<sigma>)
+defer
+apply simp
+apply simp
+apply simp
+
+lemma "\<parallel>Lam (App (shift f (Var 0))\<parallel>\<cdot>\<sigma> = \<parallel>f\<parallel>\<cdot>\<sigma>"
+apply simp 
+apply (rule model_ext)
+apply (rule allI)
+apply simp
 
 text {* We are also able to prove, fortunately, that this semantics respects
         beta reduction. *}
 
-lemma "lamDenote (beta l l')\<cdot>\<sigma> = lamDenote (App (Lam l) l')\<cdot>\<sigma>"
+lemma "\<parallel>(beta l l')\<parallel>\<cdot>\<sigma> = \<parallel>App (Lam l) l'\<parallel>\<cdot>\<sigma>"
 apply (simp)
 apply (induct l arbitrary: \<sigma> l')
 apply simp
@@ -124,13 +182,8 @@ apply simp
 defer
 apply simp
 apply (case_tac nat)
-apply (simp add: chead_def)
+apply simp
 apply (simp add: ctail_def)
-apply (drule_tac x="\<sigma>" in meta_spec)
-apply (drule_tac x="shift (Suc 0) 0 l'" in meta_spec)
-apply simp
-apply simp
-
 
 
 lemma "lamDenote (beta l l')\<cdot>[] = lamDenote (App (Lam l) l')\<cdot>[]"

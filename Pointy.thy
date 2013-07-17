@@ -47,15 +47,28 @@ text {* We define our domain type very similarly as before but with the additon 
 domain V = VNat (fromNat :: "nat u") | VFun (lazy "V \<rightarrow> V")
          | VBool (fromBool :: "bool u") | Wrong
 
-(*<*)
+(*<*) term V_take
+
 class taken = pcpo + 
   fixes take :: "nat \<Rightarrow> 'a \<Rightarrow> 'a"
   assumes take_0 [simp]: "take 0 x = \<bottom>"
   assumes take_below [simp]: "take n x \<sqsubseteq> x"
   assumes take_take : "take m (take n x) = take (min m n) x"
   assumes take_reach : "(\<Squnion> i. take i x) = x"
-thm all_comm
-(* 
+  assumes take_chain : "chain (\<lambda> i. take i x)"
+
+instantiation V :: taken
+begin
+definition "take_V = (\<lambda> i x. V_take i\<cdot>x)"
+instance
+apply (default, unfold take_V_def)
+apply simp
+apply (rule V.take_below)
+apply (rule V.take_take)
+apply (rule V.reach)
+apply simp
+done
+
 instantiation "set" :: ("taken") cer
 begin
 
@@ -67,10 +80,10 @@ apply (default, unfold rel_set_def inCer_set_def)
 apply (rule_tac x="UNIV" in exI)
 apply (simp add: ideal_def)
 apply simp
-defer 
 apply simp
 apply simp
-apply (force simp: ideal_bottom)
+apply (simp add: ideal_bottom)
+
 apply (rule allI)
 apply (drule_tac x="take i z" in spec)
 apply (subgoal_tac "take (Suc i) (take i z) = take i z")
@@ -78,16 +91,14 @@ apply simp
 apply (subgoal_tac "min (Suc i) i = i")
 apply (force simp: take_take)
 apply simp
-apply (subgoal_tac " \<forall>z i. (taken_class.take i z \<in> x) = (taken_class.take i z \<in> y)")
-apply (rule set_eqI)
-apply (drule_tac x=xa in spec)
+apply (rule set_eqI, rename_tac z)
+apply (subgoal_tac "(\<Squnion>i. take i z) \<in> x \<longleftrightarrow> (\<Squnion>i. take i z) \<in> y")
 apply (simp add: take_reach)
+apply (simp add: take_chain ideal_lub_iff)
 
-apply (subst all_comm)
-apply (drule all_comm)
-thm allE thm allI
-apply simp
-*) (*>*)
+ (*>*)
+done
+end
 
 text {* Here we define that the meaning of the natural numbers type is the set of natural
         numbers, without bottom, wrapped up in the appropriate constructors *}
