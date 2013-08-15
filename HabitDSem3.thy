@@ -137,7 +137,7 @@ definition cconst :: "'a \<Rightarrow> ('b \<rightarrow> 'a)" where
 "cconst a = (\<Lambda> b. a)"
 
 type_synonym 'a State = "V list \<rightarrow> ('a \<otimes> ((V list) u))"
-
+(*
 lemma ideal_image_VNat:
    assumes S: "ideal S"
    shows "ideal ((\<lambda> x. VNat\<cdot>x) ` S)"
@@ -148,7 +148,7 @@ apply (rule allI)
 apply (case_tac "x = \<bottom>")
 apply simp
 apply simp
-done
+done *)
 
 definition return :: "'a \<rightarrow> 'a State" where
 "return \<equiv> \<Lambda> x vs. (: x, up\<cdot>vs :)"
@@ -156,8 +156,12 @@ definition return :: "'a \<rightarrow> 'a State" where
 fixrec vApply :: "V \<rightarrow> V \<rightarrow> V State" where
 "n \<noteq> \<bottom> \<Longrightarrow> vApply\<cdot>(VNat\<cdot>n)\<cdot>x = return\<cdot>Wrong" |
 "i \<noteq> \<bottom> \<Longrightarrow> vApply\<cdot>(VInt\<cdot>i)\<cdot>x = return\<cdot>Wrong" |
+"p \<noteq> \<bottom> \<Longrightarrow> vApply\<cdot>(VProd\<cdot>p)\<cdot>x = return\<cdot>Wrong" |
 "vApply\<cdot>VUnit\<cdot>x = return\<cdot>Wrong" |
+"s \<noteq> \<bottom> \<Longrightarrow> vApply\<cdot>(VSum\<cdot>s)\<cdot>x = return\<cdot>Wrong" |
 "f \<noteq> \<bottom> \<Longrightarrow> vApply\<cdot>(VFun\<cdot>f)\<cdot>x = f\<cdot>x" |
+"bs \<noteq> \<bottom> \<Longrightarrow> vApply\<cdot>(VBit\<cdot>bs)\<cdot>x = return\<cdot>Wrong" |
+"b \<noteq> \<bottom> \<Longrightarrow> vApply\<cdot>(VBool\<cdot>b)\<cdot>x = return\<cdot>Wrong" |
 "vApply\<cdot>Wrong\<cdot>x = return\<cdot>Wrong"
 (* TODO - fix up apply so it has the right properties, i.e. (VFun\<cdot>f)\<bullet>\<bottom> = \<bottom> *)
 
@@ -194,11 +198,14 @@ apply (cases f, simp_all add: return_def)
 apply (cases g, simp_all add: return_def)
 apply (cases g, simp_all add: return_def)
 apply (cases g, simp_all add: return_def)
-apply (
+apply (cases g, simp_all add: return_def)
+apply (cases g, simp_all add: return_def)
+apply (cases g, simp_all add: return_def)
 apply (rule monofun_cfun_fun)
 apply simp
-apply (cases g, simp_all)
-apply (cases g, simp_all)
+apply (cases g, simp_all add: return_def)
+apply (cases g, simp_all add: return_def)
+apply (cases g, simp_all add: return_def)
 done
 
 lemma ideal_image_VSum:
@@ -308,11 +315,107 @@ done
 
 lemma rel_VProd_ideal : "\<lbrakk>ideal S; ideal T; ideal S'; ideal T'; rel i S S';
                           rel i T T'\<rbrakk> \<Longrightarrow> rel (Suc i ) (S [*] T) (S' [*] T')"
+unfolding rel_set_def take_V_def
+apply (simp add: VProd_ideal_def)
+apply (rule allI)
+apply (case_tac z)
+apply (simp add: image_def ideal_bottom prod_ideal)
+apply (rule iffI)
+apply (rule_tac x="\<bottom>" in exI)+
+apply (simp add: ideal_bottom)
+apply (rule_tac x="\<bottom>" in exI)+
+apply (simp add: ideal_bottom)
+
+apply (simp add: image_def)
+apply (simp add: image_def)
+apply (simp add: image_def)
+
+apply (simp add: image_def)
+apply (case_tac "sprod_map\<cdot>(V_take i)\<cdot>(V_take i)\<cdot>sprod = \<bottom>")
+apply simp
+apply (rule iffI)
+apply (rule_tac x="\<bottom>" in exI)+
+apply (simp add: ideal_bottom)
+apply (rule_tac x="\<bottom>" in exI)+
+apply (simp add: ideal_bottom)
+apply (case_tac sprod)
+apply simp
+apply (simp add: image_def)
+apply (rule iffI)
+apply (erule exE)+
+apply (rule_tac x="V_take i\<cdot>x" in exI)
+apply (rule_tac x="V_take i\<cdot>y" in exI)
+apply simp
+apply (rule conjI)
+apply (drule_tac x=x in spec)
+apply (erule conjE)+
+apply (subgoal_tac "xa = V_take i\<cdot>x")
+apply simp 
+apply (drule_tac x="V_take i\<cdot>x" and y = "V_take i\<cdot>y" in spair_inject)
+apply simp
+apply simp
+apply simp
+
+apply (erule conjE)+
+apply (drule_tac x="V_take i\<cdot>x" and y = "V_take i\<cdot>y" in spair_inject)
+apply simp
+apply simp
+apply force
+apply (erule exE)+
+apply (rule_tac x="V_take i\<cdot>x" in exI)
+apply (rule_tac x="V_take i\<cdot>y" in exI)
+apply simp
+apply (erule conjE)+
+apply (drule_tac x="V_take i\<cdot>x" and y = "V_take i\<cdot>y" in spair_inject)
+apply simp
+apply simp
+apply simp
+
+defer
+defer
+apply (simp add: image_def)
+apply (simp add: image_def)
+apply (simp add: image_def)
+
+apply (simp add: image_def)
+apply (case_tac "ssum_map\<cdot>(V_take i)\<cdot>(V_take i)\<cdot>ssum = \<bottom>")
+apply (simp add: image_def)
+apply (rule iffI)
+apply (rule_tac x="\<bottom>" in exI)+
+apply (simp add: ideal_bottom)
+apply (rule_tac x="\<bottom>" in exI)+
+apply (simp add: ideal_bottom)
+apply (simp add: image_def)
+
+apply (simp add: image_def)
+
+apply (rule iffI)
+apply (rule conjI)
+apply (rule_tac x="\<bottom>" in exI)+ apply (simp add: ideal_bottom)
+defer
+apply (rule conjI)
+apply (rule_tac x="\<bottom>" in exI)+ apply (simp add: ideal_bottom)
+
+apply (case_tac "cfun_map\<cdot>(V_take i)\<cdot>
+            (cfun_map\<cdot>(list_map (V_take i))\<cdot>
+             (sprod_map\<cdot>(V_take i)\<cdot>(u_map\<cdot>(list_map (V_take i)))))\<cdot>
+            cfun = \<bottom>")
+
+apply (simp add: ideal_bottom)
+apply (simp add: image_def)
+
+apply (case_tac "cfun_map\<cdot>(V_take i)\<cdot>
+            (cfun_map\<cdot>(list_map (V_take i))\<cdot>
+             (sprod_map\<cdot>(V_take i)\<cdot>(u_map\<cdot>(list_map (V_take i)))))\<cdot>
+            cfun = \<bottom>")
+apply (simp add: ideal_bottom)
+apply (simp add: image_def)
+done
 
 lemma rel_VSum_ideal:
   "\<lbrakk>ideal S; ideal T; ideal S'; ideal T'; rel i S S'; rel i T T'\<rbrakk> \<Longrightarrow> rel (Suc i) (S [+] T) (S' [+] T')" 
-unfolding rel_set_def
-apply (simp add: VSum_ideal_def take_V_def)
+unfolding rel_set_def take_V_def
+apply (simp add: VSum_ideal_def)
 apply (rule allI)
 apply (case_tac z)
 apply (simp add: image_def ideal_bottom)
@@ -337,7 +440,6 @@ apply (case_tac "cfun_map\<cdot>(V_take i)\<cdot>
 apply (simp add: image_def VSum_ideal_def ideal_bottom)
 apply (simp add: image_def VSum_ideal_def)
 done(*>*)
-
 
 definition bind :: "('a State) \<rightarrow> ('a \<rightarrow> 'b State) \<rightarrow> 'b State" where
 "bind \<equiv> (\<Lambda> s f n. (\<Lambda> (: a , up\<cdot>n' :). (f\<cdot>a)\<cdot>n')\<cdot>(s\<cdot>n))"
